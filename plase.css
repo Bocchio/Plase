@@ -1,0 +1,61 @@
+#plot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: plum;
+}
+#control {
+  position: fixed;
+  bottom: 1em;
+  left: 0;
+  text-align: center;
+  padding: 0.5em;
+  width: 100%;
+  //background-color: lightgreen;
+}
+
+#control .bar {
+  height: 2.5em;
+  display: inline-block;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 0px;
+  border-radius: 0.2em;
+  box-shadow: 0 0 0.2em black;
+  font-weight: bold;
+  font-size: 100%;
+  padding: 0em 0.5em 0em 0.5em;
+  color: rgba(255, 255, 255, 1);
+}
+
+#control input {
+
+}
+
+#control button:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+#control button:active {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+
+#control input::placeholder {
+  opacity: 1;
+}
+
+* {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
