@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="UTF-8">
+    <title>title</title>
+  </head>
+  <link rel="stylesheet" href="prueba.css">
+
+  <body>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/mathjs/3.15.0/math.min.js"></script>
+    <script src="plase.js"></script>
+
+    <canvas id="plot">
+        fallback
+    </canvas>
+
+    <div id="control">
+      <input id="function" class="bar" placeholder="Input your function here">
+      <button class="bar" id="calcular"><span> plot </span></button>
+      <input id="quality" type="range" min="0.01" max="1.0" step="any" defaultValue="0.9">
+      <input id="density" type="range" min="0.01" max="1.0" step="any">
+    </div>
+  </body>
+
+</html>
