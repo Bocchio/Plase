@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
   function changedFunction() {
     try{
-      resp = math.compile(complexFunc.value);
+      resp = math.compile(complexFunc.value.toLowerCase());
       fillCanvas();
     }
     catch(err){
