@@ -3,6 +3,7 @@
 
   <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
     <title>Plase</title>
   </head>
   <link rel="stylesheet" href="plase.css">
@@ -30,6 +31,7 @@
     precision mediump float;
 
     uniform vec2 u_resolution;
+    uniform vec2 focus;
     varying vec2 coords;
     vec4 randomColor(vec2 co) {
       return vec4(fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453),
@@ -152,8 +154,13 @@
       vec2 w = funofz(z);
       float hue = (cArg(w)+PI)/(2.0*PI);
       //float hue = (cArg(cMul(z,z))+PI)/(2.0*PI);
-      if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
+
+      //if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
+      //  hue = 0.0;
+
+      if(sqrt(pow(z.x-focus.x,2.0)+pow(z.y-focus.y,2.0)) < 0.5)
         hue = 0.0;
+
       gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w))), 1.0);
       //gl_FragColor = randomColor(gl_FragCoord.xy);
     }

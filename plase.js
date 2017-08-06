@@ -49,11 +49,12 @@ function main() {
     positionLocation = gl.getAttribLocation(program, "a_position");
     offsetLocation = gl.getUniformLocation(program, "u_offset");
     resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+    focusLocation = gl.getUniformLocation(program, "focus");
     // Create a buffer and put three 2d clip space points in it
     positionBuffer = gl.createBuffer();
   }
 
-  function drawScreen() {
+  function drawScreen(focus) {
     //var prevHeight = gl.canvas.height;
     webglUtils.resizeCanvasToDisplaySize(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -74,6 +75,7 @@ function main() {
     gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
     gl.uniform2f(resolutionLocation, width/2.0, height/2.0);
     gl.uniform2fv(offsetLocation, vertex);
+    gl.uniform2f(focusLocation, -1.0, 1.0);
     //gl.uniform4fv(colorLocation, color);
     var primitiveType = gl.TRIANGLES;
     var offset = 0;
@@ -84,6 +86,105 @@ function main() {
   gl.canvas.onmousedown = onmousedown;
   gl.canvas.onmouseup = onmouseup;
   gl.canvas.onmousemove = onmousemove;
+
+  var flagTouch = false;
+  var timerID = null;
+  var p1 = {x: 0.0,
+            y: 0.0};
+  var p2 = {x: 0.0,
+            y: 0.0};
+
+  gl.canvas.ontouchstart = function (event) {
+    switch (event.touches.length) {
+      case 1: singleTouchStart(event); break;
+      case 2: doubleTouchStart(event); break;
+      default: gesture_not_supported(ev); break;
+    }
+  };
+
+  function gesture_not_supported(event) {
+    document.getElementById('calcular').innerHTML = "no soportado";
+  }
+
+  function singleTouchStart(event) {
+    if(timerID == null) {
+      timerID = setTimeout(function () {timerID = null;}, 400);
+      //if(event.touches.length == 2)
+      //  document.getElementById('calcular').innerHTML = "not plot";
+      flagTouch = true;
+      event.x = event.touches[0].clientX;
+      event.y = event.touches[0].clientY;
+      var x =  (event.x/gl.canvas.clientWidth -0.5)*width;
+      var y = -(event.y/gl.canvas.clientHeight-0.5)*height;
+      // if((y >= vertex[1]) && (x >= vertex[0]) &&
+      //    (y <= (vertex[1]+height + vertex[0]*height/width - x*height/width))){
+      flag = true;
+      currX = event.x;
+      currY = event.y;
+    }
+    else {
+      clearTimeout(timerID);
+      timerID = null;
+      document.getElementById('calcular').innerHTML = "not plot";
+
+      var ev = {x : event.touches[0].clientX,
+                y : event.touches[0].clientY,
+                deltaY: -1.0};
+      zoomCanvas(ev);
+    }
+  }
+
+  function distance(vec1, vec2) {
+    // Helper function to calculate the distance between two vectors on canvas
+    return Math.sqrt(Math.pow(vec1.x-vec2.x, 2) + Math.pow(vec1.y-vec2.y, 2));
+  };
+
+  function doubleTouchStart(event) {
+    p1 = {x: (event.touches[0].clientX/gl.canvas.width - 0.5)*width,
+          y: (event.touches[0].clientY/gl.canvas.height - 0.5)*height};
+    p2 = {x: (event.touches[1].clientX/gl.canvas.width - 0.5)*width,
+          y: (event.touches[1].clientY/gl.canvas.height - 0.5)*height};
+  }
+
+  //gl.canvas.ontouchend = onmouseup;
+  gl.canvas.ontouchmove = function (event) {
+    switch (event.touches.length) {
+      case 1: singleTouchMove(event); break;
+      case 2: doubleTouchMove(event); break;
+      default: gesture_not_supported(ev); break;
+    }
+  };
+
+  function singleTouchMove(event) {
+    if(flagTouch){
+      event.x = event.touches[0].clientX;
+      event.y = event.touches[0].clientY;
+      vertex[0] -= (currX-event.x)*width/gl.canvas.clientWidth;
+      vertex[1] += (currY-event.y)*height/gl.canvas.clientHeight;
+      currX = event.x;
+      currY = event.y;
+      drawScreen();
+    }
+  };
+
+  function doubleTouchMove(event) {
+    var p3 = {x: event.touches[0].clientX,
+              y: event.touches[0].clientY};
+    var p4 = {x: event.touches[1].clientX,
+              y: event.touches[1].clientY};
+
+    width = Math.abs(p1.x-p2.x)*gl.canvas.width/Math.abs(p3.x-p4.x);
+    height = width*(gl.canvas.height/gl.canvas.width);
+
+    vertex[0] = (p3.x/gl.canvas.width-0.5)*width-p1.x;
+    vertex[1] = (p3.y/gl.canvas.height-0.5)*height-p1.y;
+
+    drawScreen();
+  };
+
+  gl.canvas.ontouchend = function (event) {
+    flagTouch = false;
+  };
 
 
   var flag = false;
@@ -133,11 +234,11 @@ function main() {
   gl.canvas.onwheel = zoomCanvas;
   complexFunc.onchange = changedFunction;
 
-  function zoomCanvas(event) {
+  function zoomCanvas(event, factor) {
     var propX = event.x/gl.canvas.clientWidth;
     var propY = event.y/gl.canvas.clientHeight;
-    var currX =  (propX-0.5)*width - vertex[0];
-    var currY =  (propY-0.5)*height + vertex[1];
+    var currX =   (propX-0.5)*width - vertex[0];
+    var currY =  -(propY-0.5)*height - vertex[1];
     var factor = Math.sign(event.deltaY) * 0.15;
     width *= (1.0 + factor);
     height = width*(gl.canvas.height/gl.canvas.width);
@@ -157,6 +258,7 @@ function main() {
       drawScreen();
     }
     catch(err){
+
       console.log("can't parse "+complexFunc.value);
     }
 
