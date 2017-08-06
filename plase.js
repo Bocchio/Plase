@@ -1,209 +1,196 @@
-document.addEventListener("DOMContentLoaded", function(){
-  var calcular = document.getElementById('calcular');
-  var canvas = document.getElementById('plot');
-  var slider = document.getElementById('quality');
-  slider.value = 0.5;
-  var density = document.getElementById('density');
+function createShader(gl, type, source) {
+  var shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+  if (success) {
+    return shader;
+  }
+
+  console.log(gl.getShaderInfoLog(shader));
+  gl.deleteShader(shader);
+}
+
+function createProgram(gl, vertexShader, fragmentShader) {
+  var program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+  if (success) {
+    return program;
+  }
+
+  console.log(gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
+}
+
+function main() {
+  // Get A WebGL context
+  var canvas = document.getElementById("c");
+  var gl = canvas.getContext("webgl");
+  if (!gl) {
+    // Things went wrong
+    return;
+  }
+
   var complexFunc = document.getElementById('function');
-  var context = canvas.getContext("2d");
-  var quality = Number(slider.value);
-  canvas.width  = Math.round(window.innerWidth*quality);
-  canvas.height = Math.round(canvas.width*(window.innerHeight/window.innerWidth));
-  var imgData = context.createImageData(canvas.width, canvas.height);
-  var resp = math.compile("z");
 
-  var x = {};
-  x.min = -15.0;
-  x.max = 15.0;
-  x.range = x.max - x.min;
+  var positionLocation;
+  var offsetLocation;
+  var resolutionLocation;
+  // Create a buffer and put three 2d clip space points in it
+  var positionBuffer;
 
-  var y = {};
-  y.min = -canvas.height/(2*(canvas.width/x.range));
-  y.max = canvas.height/(2*(canvas.width/x.range));
-  y.range= y.max - y.min;
+  var program = loadFunction(gl);
+  loadProgram();
 
-  var scope = {z: math.complex(x.min, x.max)};
+  function loadProgram() {
+    positionLocation = gl.getAttribLocation(program, "a_position");
+    offsetLocation = gl.getUniformLocation(program, "u_offset");
+    resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+    // Create a buffer and put three 2d clip space points in it
+    positionBuffer = gl.createBuffer();
+  }
 
-  var timerID;
+  function drawScreen() {
+    //var prevHeight = gl.canvas.height;
+    webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    //width = width*(prevCanvasWidth/gl.canvas.width);
+    height = width*(gl.canvas.height/gl.canvas.width);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(program);
 
-  calcular.onclick = fillCanvas;
-  slider.onchange = function () {quality = Number(slider.value); resizeCanvas(undefined);};
+    gl.enableVertexAttribArray(positionLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    setScreen(gl, width/2.0, height/2.0);
+
+    var size = 2;          // 2 components per iteration
+    var type = gl.FLOAT;   // the data is 32bit floats
+    var normalize = false; // don't normalize the data
+    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
+    gl.uniform2f(resolutionLocation, width/2.0, height/2.0);
+    gl.uniform2fv(offsetLocation, vertex);
+    //gl.uniform4fv(colorLocation, color);
+    var primitiveType = gl.TRIANGLES;
+    var offset = 0;
+    var count = 6;
+    gl.drawArrays(primitiveType, offset, count);
+  }
+
+  gl.canvas.onmousedown = onmousedown;
+  gl.canvas.onmouseup = onmouseup;
+  gl.canvas.onmousemove = onmousemove;
+
+
+  var flag = false;
+  var currX;
+  var currY;
+  var width = 10.0;
+  var height = width*(gl.canvas.height/gl.canvas.width);
+
+  webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+  var prevCanvasWidth = gl.canvas.width;
+  var prevCanvasHeight = gl.canvas.height;
+
+  var vertex = [0.0, 0.0];
+
+
+  function onmousedown(event) {
+    var x =  (event.x/gl.canvas.clientWidth -0.5)*width;
+    var y = -(event.y/gl.canvas.clientHeight-0.5)*height;
+    // if((y >= vertex[1]) && (x >= vertex[0]) &&
+    //    (y <= (vertex[1]+height + vertex[0]*height/width - x*height/width))){
+    flag = true;
+    currX = event.x;
+    currY = event.y;
+    // }
+  }
+
+  function onmouseup(event) {
+    flag = false;
+  }
+
+  function onmousemove(event) {
+    if(flag){
+      vertex[0] -= (currX-event.x)*width/gl.canvas.clientWidth;
+      vertex[1] += (currY-event.y)*height/gl.canvas.clientHeight;
+      currX = event.x;
+      currY = event.y;
+      drawScreen();
+    }
+  }
+
+  window.onresize = function (event) {
+    //prevCanvasWidth = gl.canvas.width;
+    //prevCanvasHeight = gl.canvas.height;
+    drawScreen();
+  }
+
+  gl.canvas.onwheel = zoomCanvas;
   complexFunc.onchange = changedFunction;
-  window.onresize = resizeCanvas;
-
-  var moving = false;
-  canvas.onmousemove = moveCanvas;
-  canvas.onmousedown = startMoveCanvas;
-  canvas.onmouseup = endMoveCanvas;
-  canvas.onmouseout = endMoveCanvas;
-  canvas.onwheel = zoomCanvas;
-
-  function fillCanvas()
-  {
-    // console.log(canvas.width);
-    // console.log(canvas.height);
-    for (var i=0; i < imgData.data.length; i+=4){
-      resp.eval(scope);
-      var pixel = i/4;
-      var xa = (pixel%imgData.width)*x.range/imgData.width + x.min;
-      var ya = Math.floor(pixel/imgData.width)*y.range/imgData.height + y.min;
-      scope.z = math.complex(xa, ya);
-      var w = resp.eval(scope);
-      var angle = w.arg()/(math.tau) + 0.5;
-      var rgb = hslToRgb(angle, 1.0, lum(w.abs()));
-      //console.log(rgb);
-      imgData.data[i+0] = rgb[0]; //255*Math.floor(i/imgData.width)/imgData.height;
-      imgData.data[i+1] = rgb[1]; //0;
-      imgData.data[i+2] = rgb[2]; //0;
-      imgData.data[i+3] = 255;
-    }
-
-
-    // square for scale
-    var row = imgData.width;
-    var offset_x = Math.round(canvas.width/10)*4;
-    var offset_y = Math.round(2*canvas.width/10)*4*row;
-    var sx = Math.round(canvas.width/10);
-    var sy = Math.round(canvas.width/10);
-    for (var i=0; i < sx*sy; i++){
-      imgData.data[offset_x + offset_y + 4*(i%sx) + 4*row*Math.floor(i/sy) + 0] = 0;
-      imgData.data[offset_x + offset_y + 4*(i%sx) + 4*row*Math.floor(i/sy) + 1] = 0;
-      imgData.data[offset_x + offset_y + 4*(i%sx) + 4*row*Math.floor(i/sy) + 2] = 0;
-      imgData.data[offset_x + offset_y + 4*(i%sx) + 4*row*Math.floor(i/sy) + 3] = 255;
-    }
-    context.putImageData(imgData, 0, 0);
-  }
-
-  function clamp(num, min, max) {
-    if(num < min)
-      return min
-    else if(num > max)
-      return max
-    return num;
-  }
-
-  function lum(num) {
-    //var d = 1-Number(density.value);
-    return 0.5-(Math.log2(num)%1)/3.0;
-    //return math.atan(math.log(num))/math.pi+0.5
-  }
-
-  function moveCanvas(event) {
-    if(moving){
-      var movX = -(event.clientX - prevX)*quality*x.range/(canvas.width);
-      var movY = -(event.clientY - prevY)*quality*y.range/(canvas.height);
-      prevX = event.clientX;
-      prevY = event.clientY;
-
-      x.min += movX
-      x.max += movX;
-
-      y.min += movY;
-      y.max += movY;
-      fillCanvas();
-    }
-  }
-
-  function startMoveCanvas(event) {
-    moving = true;
-    quality = 0.1;
-    prevX = event.clientX;
-    prevY = event.clientY;
-    resizeCanvas(undefined);
-  }
-
-  function endMoveCanvas(event) {
-    moving = false;
-    quality = Number(slider.value);
-    resizeCanvas(undefined);
-  }
 
   function zoomCanvas(event) {
-    var propX = event.clientX*quality/(canvas.width);
-    var propY = event.clientY*quality/(canvas.height);
-    var currX =  propX*x.range + x.min;
-    var currY =  propY*y.range + y.min;
+    var propX = event.x/gl.canvas.clientWidth;
+    var propY = event.y/gl.canvas.clientHeight;
+    var currX =  (propX-0.5)*width - vertex[0];
+    var currY =  (propY-0.5)*height + vertex[1];
     var factor = Math.sign(event.deltaY) * 0.15;
-    x.range /= 1.0 - factor;
-    x.min = currX - propX*x.range;
-    x.max = currX + (1-propX)*x.range;
+    width *= (1.0 + factor);
+    height = width*(gl.canvas.height/gl.canvas.width);
+    vertex[0] += (propX-0.5)*width*factor;
+    vertex[1] -= (propY-0.5)*height*factor;
 
-    y.range /= 1.0 - factor;
-    y.min = currY - propY*y.range;
-    y.max = currY + (1-propY)*y.range;
-    quality = 0.1;
-    if(quality != Number(slider.value))
-      resizeCanvas(undefined);
-    else
-      fillCanvas();
-    window.clearTimeout(timerID);
-    timerID = window.setTimeout(function () {
-                      quality = Number(slider.value);
-                      console.log("hola");
-                      resizeCanvas(undefined);}, 60);
-    //console.log(event.deltaY, currX, currY);
+    drawScreen();
   }
 
   function changedFunction() {
+    var myfun;
     try{
-      resp = math.compile(String(complexFunc.value).toLowerCase());
-      fillCanvas();
+      myfun = parser.parse(complexFunc.value);
+      console.log(myfun);
+      program = loadFunction(gl, myfun);
+      loadProgram();
+      drawScreen();
     }
     catch(err){
-        console.log("no dice!");
+      console.log("can't parse "+complexFunc.value);
     }
+
   }
 
-  function resizeCanvas(event) {
-    // var img = new Image();
-    // img.src = canvas;
-    // img.onload = function (){
 
-    imgData = undefined;
+  drawScreen();
+}
 
-    canvas.width  = Math.round(window.innerWidth*quality);
-    canvas.height = Math.round(canvas.width*(window.innerHeight/window.innerWidth));
+function setScreen(gl, width, height) {
+  var positions = [
+    -width, -height,
+    -width, height,
+    width, -height,
+    width, -height,
+    -width, height,
+    width, height
+  ];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+}
 
-    // x.min = -15.0;
-    // x.max = 15.0;
-    // x.range = x.max - x.min;
+var parserSource = document.getElementById("parsing_rules").text;
+var parser = eval(peg.generate(parserSource));
 
-    var center = (y.min + y.max)/2;
-    y.min = center - canvas.height/(2*(canvas.width/x.range));
-    y.max = center + canvas.height/(2*(canvas.width/x.range));
-    y.range = y.max - y.min;
+main();
 
-    //  context.drawImage(img, 0, 0, canvas.width, canvas.height);
-    //  imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-    // }
-    // Ineficiente, retocar para calcular solamente lo extra
-    imgData = context.createImageData(canvas.width, canvas.height);
-    fillCanvas();
-  };
-});
+function loadFunction(gl, myfun) {
+  var funofz = "\nvec2 funofz(vec2 z) {\nreturn "+ (myfun || "z")+";\n}";
+  var funsSource = document.getElementById("usefulFunctions").text + funofz;
+  var vertexShaderSource =  document.getElementById("2d-vertex-shader").text;
+  var fragmentShaderSource = funsSource + document.getElementById("2d-fragment-shader").text;
 
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
-function hslToRgb(h, s, l){
-    var r, g, b;
-
-    if(s == 0){
-        r = g = b = l; // achromatic
-    }else{
-        var hue2rgb = function hue2rgb(p, q, t){
-            if(t < 0) t += 1;
-            if(t > 1) t -= 1;
-            if(t < 1/6) return p + (q - p) * 6 * t;
-            if(t < 1/2) return q;
-            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-            return p;
-        }
-
-        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        var p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-    }
-
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  return createProgram(gl, vertexShader, fragmentShader);
 }

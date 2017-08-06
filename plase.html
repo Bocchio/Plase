@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="UTF-8">
+    <title>title</title>
+  </head>
+  <link rel="stylesheet" href="plase.css">
+
+  <script id="2d-vertex-shader" type="notjs">
+  // an attribute will receive data from a buffer
+  precision mediump float;
+  attribute vec2 a_position;
+
+  uniform vec2 u_offset;
+  uniform vec2 u_resolution;
+  varying vec2 coords;
+  // all shaders have a main function
+  void main() {
+    // gl_Position is a special variable a vertex shader
+    // is responsible for setting
+    coords = a_position-u_offset;
+    gl_Position = vec4(a_position/u_resolution, 0, 1);
+  }
+  </script>
+
+  <script id="usefulFunctions" type="notjs">
+    #define PI 3.1415926535897932384626433832795
+    #define E  2.71828182845904523536
+    precision mediump float;
+
+    uniform vec2 u_resolution;
+    varying vec2 coords;
+    vec4 randomColor(vec2 co) {
+      return vec4(fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453),
+                  fract(sin(dot(co.xy, vec2(78.9898,12.233))) * 43758.5453),
+                  fract(sin(dot(co.xy, vec2(2.9898,8.233))) * 43758.5453),
+                  1.0);
+      //return 1.0;
+      //return vec4(1.0, 1.0, 1.0, 1.0);
+    }
+
+    float cAbs(vec2 z){
+        return sqrt(z.x * z.x + z.y * z.y);
+    }
+
+    float cArg(vec2 z){
+        return atan(z.y, z.x);
+    }
+
+
+
+    vec2 cPow(vec2 z, float a){
+      float rho = pow(cAbs(z), a);
+      float theta = a*cArg(z);
+      return vec2(rho*cos(theta),rho*sin(theta));
+    }
+
+    vec2 cPow(float a, vec2 z) {
+      return vec2(0.0, 0.0);
+    }
+
+    vec2 cPow(vec2 z, vec2 w){
+      if(w.y == 0.0)
+        return cPow(z, w.x);
+      return vec2(0.0, 0.0);
+    }
+
+    vec2 cMul(vec2 z1, vec2 z2){
+        return vec2(z1.x * z2.x - z1.y * z2.y, z1.x * z2.y + z1.y * z2.x);
+    }
+
+    vec2 cDiv(vec2 z, vec2 w) {
+      if (w.y == 0.0) {
+          return vec2(z.x / w.x, z.y / w.x);
+      }
+      if (w.x == 0.0) {
+          return vec2(z.y / w.y, -(z.x / w.y));
+      }
+
+      float r = w.x * w.x + w.y * w.y;
+      return vec2((z.x * w.x + z.y * w.y) / r,
+              (z.y * w.x - z.x * w.y) / r);
+    }
+
+    float cosh(float x){
+      return (pow(E,x)+pow(E,-x))*0.5;
+    }
+
+    float sinh(float x){
+      return (pow(E,x)-pow(E,-x))*0.5;
+    }
+
+    vec2 cSin(vec2 z) {
+      return vec2(sin(z.x) * cosh(z.y), cos(z.x) * sinh(z.y));
+    }
+
+    vec2 cCos(vec2 z) {
+      return vec2(cos(z.x) * cosh(z.y), sin(z.x) * sinh(z.y));
+    }
+
+    vec2 cExp(vec2 z) {
+      return exp(z.x) * vec2(cos(z.y), sin(z.y));
+    }
+
+    vec2 cExp(float x) {
+      return vec2(exp(x), 0.0);
+    }
+
+    float hue2rgb(vec3 pqt) {
+      if(pqt.z < 0.0) pqt.z += 1.0;
+      if(pqt.z > 1.0) pqt.z -= 1.0;
+      if(pqt.z < 1.0/6.0) return pqt.x + (pqt.y - pqt.x) * 6.0 * pqt.z;
+      if(pqt.z < 1.0/2.0) return pqt.y;
+      if(pqt.z < 2.0/3.0) return pqt.x + (pqt.y - pqt.x) * (2.0/3.0 - pqt.z) * 6.0;
+      return pqt.x;
+    }
+
+    vec3 hslToRgb(vec3 hsl) {
+        vec3 rgb;
+        vec2 pq;
+
+        if(hsl.y == 0.0)
+            rgb = vec3(hsl.z, hsl.z, hsl.z); // achromatic
+
+        pq.y = hsl.z < 0.5 ? hsl.z * (1.0 + hsl.y) : hsl.z + hsl.y - hsl.z * hsl.y;
+        pq.x = 2.0 * hsl.z - pq.y;
+        rgb = vec3(hue2rgb(vec3(pq, hsl.x + 1.0/3.0)),
+                   hue2rgb(vec3(pq, hsl.x)),
+                   hue2rgb(vec3(pq, hsl.x - 1.0/3.0)));
+        return rgb;
+    }
+
+    float lum(vec2 z) {
+      float near2n = fract(log2(cAbs(z)));
+      return 0.5-near2n/4.0;
+      //return atan(log(cAbs(z)))/PI+0.5;
+    }
+  </script>
+
+  <script id="2d-fragment-shader" type="notjs">
+      // fragment shaders don't have a default precision so we need
+      // to pick one. mediump is a good default
+    void main() {
+      // gl_FragColor is a special variable a fragment shader
+      // is responsible for setting
+      //gl_FragColor = vec4(1.0, 0.0, 0.5, 1); // return redish-purple
+      //gl_FragColor = vec4(1.0, 0.0, 0.5, 1);
+
+      //vec2 z = (gl_FragCoord.xy/u_resolution-1.0/2.0)*10.0;
+      vec2 z = coords;
+      vec2 w = funofz(z);
+      float hue = (cArg(w)+PI)/(2.0*PI);
+      //float hue = (cArg(cMul(z,z))+PI)/(2.0*PI);
+      if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
+        hue = 0.0;
+      gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w))), 1.0);
+      //gl_FragColor = randomColor(gl_FragCoord.xy);
+    }
+  </script>
+
+  <body>
+    <canvas id="c">
+        fallback
+    </canvas>
+
+    <div id="control">
+      <input id="function" class="bar" placeholder="Input your function here">
+      <button class="bar" id="calcular"><span> plot </span></button>
+      <!-- <input id="quality" type="range" min="0.01" max="1.0" step="any" defaultValue="0.9">
+      <input id="density" type="range" min="0.01" max="1.0" step="any">
+      -->
+    </div>
+  </body>
+  <script id="parsing_rules" type="notjs">
+  start
+  = additive
+
+  Expression
+    = "(" _ expr:additive _ ")" {return "("+expr+")";}
+
+  additive
+    = left:Term _ op:("+"/"-") _ right:additive
+  	{return left+op+right;}
+    / Term
+
+  Term
+    = left:Factor _ op:("*"/"/") _ right:Term
+    	{if(op == "/")
+         return "cDiv("+left+","+right+")";
+       else
+         return "cMul("+left+","+right+")";}
+    / _ op:"-" _ right:Term
+    	{return op+right;}
+    / _ left:Number right:Factor {return "cMul("+left+","+right+")";}
+    / Factor
+
+  Factor
+    = BaseExponent
+
+  BaseExponent
+    = "(" _ base:additive _ ")" _ "^" _ "(" exponent:additive _ ")"
+    	{return "cPow("+base+","+exponent+")";}
+    / "(" _ base:additive _ ")" _ "^" _ exponent:Term //Dudas sobre este Term
+    	{return "cPow("+base+","+exponent+")";}
+    / base:Number _ "^" _ "(" exponent:additive _ ")"
+    	{return "cPow("+base+","+exponent+")";}
+    / base:Number _ "^" _ exponent:Number
+      {return "cPow("+base+","+exponent+")";}
+    / Number
+
+  Number
+    = complex
+    / Zvar
+    / Xvar
+    / Yvar
+    / Function
+    / Expression
+
+  Function
+    = Cosine
+    / Sine
+    / Exp
+
+  Cosine
+    = _ ("cos"/"Cos"/"COS") "(" _ inside:additive _ ")"
+      { return "(cCos("+inside+"))";}
+
+  Sine
+    = _ ("sin"/"Sin"/"SIN") "(" _ inside:additive _ ")"
+      { return "(cSin("+inside+"))";}
+
+  Exp
+    = _ ("exp"/"Exp"/"EXP") "(" _ inside:additive _ ")"
+      { return "(cExp("+inside+"))";}
+    / _ ("e^"/"E^") "(" _ inside:additive _ ")"
+      { return "(cExp("+inside+"))";}
+    / _ ("e^"/"E^") inside:Number _
+      { return "(cExp("+inside+"))";}
+
+  Zvar
+    = [zZ] {return "z";}
+
+  Xvar
+    = [xX] {return "vec2(z.x,0.0)";}
+
+  Yvar
+    = [yY] {return "vec2(z.y,0.0)";}
+
+
+  complex
+    =  "i" ("*"/"") num:real {return "vec2(0.0,"+num+")";}
+    / num:real ("*"/"") "i" {return "vec2(0.0,"+num+")";}
+    / num:real {return "vec2("+num+",0.0)";}
+    / "i" {return "vec2(0.0,1.0)";}
+
+  real "real"
+    = _ [0-9]+"."[0-9]+ { return text();}
+    / _ "."[0-9]+ { return "0"+text();}
+    / _ [0-9]+"." { return text()+"0";}
+    / _ [0-9]+ { return text()+".0";}
+
+  _ "whitespace"
+    = [ \t\n\r]*
+
+  __ "whitespace"
+    = [ \t\n\r]+
+  </script>
+  <script src="webgl-utils.js"></script>
+  <script src="peg-0.10.0.min.js"></script>
+  <script src="plase.js"></script>
+
+</html>
