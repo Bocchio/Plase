@@ -35,6 +35,8 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ],
+              "baseHref": "/Plase/",
+              "deployUrl": "https://bocchio.github.io/Plase/",
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,

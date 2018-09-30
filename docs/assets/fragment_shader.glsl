@@ -123,13 +123,20 @@ float lum(vec2 z) {
 }
 
 float gridLum(vec2 z) {
-    float x = 1.0-pow(2.0*(fract(z.x/u_gridSeparation)-0.5),2.0);
-    float y = 1.0-pow(2.0*(fract(z.y/u_gridSeparation)-0.5),2.0);
-    return pow(1.0-x*y, u_gridDensity);
+    // float x = 1.0-pow(2.0*(fract(z.x/u_gridSeparation)-0.5),2.0);
+    // float y = 1.0-pow(2.0*(fract(z.y/u_gridSeparation)-0.5),2.0);
+    // return pow(1.0-x*y, u_gridDensity);
+
+    // (2x-1)² vale 1 en x = 0 y en x = 1 y 0 en la mitad
+    //return (pow(2.0*fract(z.x/u_gridSeparation)-1.0, 2.0) +
+    //        pow(2.0*fract(z.y/u_gridSeparation)-1.0, 2.0))/2.0;
+    float cosax = abs(2.0*fract(z.x/u_gridSeparation)-1.0);
+    float cosay = abs(2.0*fract(z.y/u_gridSeparation)-1.0);
+    return min(pow(cosax, 64.0) + pow(cosay, 64.0), 1.0);
 }
 
 vec2 funofz(vec2 z) {
-    return z;
+    return cMul(z, z)+vec2(1.0, 0.0);
 }
 
 // fragment shaders don't have a default precision so we need
@@ -159,6 +166,7 @@ void main() {
     //if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
     //  hue = 0.0;
 
-    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w))), 1.0);
+    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, 0.5-0.5*gridLum(w))), 1.0);
+    //gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w)-gridLum(w))), 1.0);
     //gl_FragColor = randomColor(gl_FragCoord.xy);
 }
