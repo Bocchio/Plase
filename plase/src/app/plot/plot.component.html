@@ -1,6 +1,7 @@
-<p>
-  plot works!
-</p>
-<canvas #canvas id="canvas">
+<canvas #canvas id="canvas"
+  (touchstart)="ontouchstart($event)"
+  (touchmove)="ontouchmove($event)"
+  (touchend)="ontouchend($event)">
   fallback
 </canvas>
+<p id="importante" > {{mensaje}} </p>

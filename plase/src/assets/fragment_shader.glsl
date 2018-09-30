@@ -1,18 +1,19 @@
-
 #define PI 3.1415926535897932384626433832795
 #define E  2.71828182845904523536
-precision mediump float;
+precision highp float;
+const float inf = 1.0/0.0;
 
-uniform vec2 u_resolution;
-uniform vec2 focus;
-varying vec2 coords;
+uniform mat3 u_projection;
+uniform float u_density;
+uniform float u_gridDensity;
+uniform float u_gridSeparation;
+varying vec2 pos;
+
 vec4 randomColor(vec2 co) {
     return vec4(fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453),
         fract(sin(dot(co.xy, vec2(78.9898,12.233))) * 43758.5453),
         fract(sin(dot(co.xy, vec2(2.9898,8.233))) * 43758.5453),
         1.0);
-    //return 1.0;
-    //return vec4(1.0, 1.0, 1.0, 1.0);
 }
 
 float cAbs(vec2 z){
@@ -22,8 +23,6 @@ float cAbs(vec2 z){
 float cArg(vec2 z){
     return atan(z.y, z.x);
 }
-
-
 
 vec2 cPow(vec2 z, float a){
     float rho = pow(cAbs(z), a);
@@ -107,35 +106,33 @@ vec3 hslToRgb(vec3 hsl) {
 }
 
 float lum(vec2 z) {
+    float num = cAbs(z);
+    if(num >= inf)
+    return 1.0;
     float near2n = fract(log2(cAbs(z)));
-    return 0.5-near2n/4.0;
+    //return pow(abs(1.0-near2n), u_density)/2.0 + 0.5;
+    return pow(abs(2.0*(near2n-0.5)), u_density);
     //return atan(log(cAbs(z)))/PI+0.5;
 }
 
+float gridLum(vec2 z) {
+    float x = 1.0-pow(2.0*(fract(z.x/u_gridSeparation)-0.5),2.0);
+    float y = 1.0-pow(2.0*(fract(z.y/u_gridSeparation)-0.5),2.0);
+    return pow(1.0-x*y, u_gridDensity);
+}
+
 vec2 funofz(vec2 z) {
-    return cMul(z, z);
+    return z;
 }
 
 // fragment shaders don't have a default precision so we need
 // to pick one. mediump is a good default
 void main() {
-    // gl_FragColor is a special variable a fragment shader
-    // is responsible for setting
-    //gl_FragColor = vec4(1.0, 0.0, 0.5, 1); // return redish-purple
-    //gl_FragColor = vec4(1.0, 0.0, 0.5, 1);
-
-    //vec2 z = (gl_FragCoord.xy/u_resolution-1.0/2.0)*10.0;
-    vec2 z = coords;
+    vec2 z = (u_projection*vec3(pos, 1.0)).xy;
     vec2 w = funofz(z);
     float hue = (cArg(w)+PI)/(2.0*PI);
-    //float hue = (cArg(cMul(z,z))+PI)/(2.0*PI);
-
-    //if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
-    //  hue = 0.0;
-
-    if(sqrt(pow(z.x-focus.x,2.0)+pow(z.y-focus.y,2.0)) < 0.5)
-    hue = 0.0;
-
-    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w))), 1.0);
-    //gl_FragColor = randomColor(gl_FragCoord.xy);
+    vec3 rgb = hslToRgb(vec3(hue, 0.5, 0.5 - 0.25*gridLum(w)));
+    rgb *= 1.0 - lum(w);
+    rgb += lum(w)*vec3(1.0);
+    gl_FragColor = vec4(rgb, 1.0);
 }
