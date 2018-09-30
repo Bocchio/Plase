@@ -177,9 +177,9 @@ export class PlotComponent implements OnInit {
   }
 
   async insertProgram() {
-    let vertexRequest = this.http.get('assets/vertex_shader.glsl',
+    let vertexRequest = this.http.get('/assets/vertex_shader.glsl',
                                      { responseType: 'text' });
-    let fragmentRequest = this.http.get('assets/fragment_shader.glsl',
+    let fragmentRequest = this.http.get('/assets/fragment_shader.glsl',
                                        { responseType: 'text' });
     var responses = forkJoin([vertexRequest, fragmentRequest]).toPromise();
 
