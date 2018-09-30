@@ -110,8 +110,15 @@ float lum(vec2 z) {
     if(num >= inf)
     return 1.0;
     float near2n = fract(log2(cAbs(z)));
+
     //return pow(abs(1.0-near2n), u_density)/2.0 + 0.5;
+
+    // Antiaaliasing
+    near2n = near2n + pow((1.0-near2n), 200.0);
+    return 0.5-near2n/4.0;
+
     return pow(abs(2.0*(near2n-0.5)), u_density);
+
     //return atan(log(cAbs(z)))/PI+0.5;
 }
 
@@ -127,12 +134,31 @@ vec2 funofz(vec2 z) {
 
 // fragment shaders don't have a default precision so we need
 // to pick one. mediump is a good default
+// void main() {
+//     vec2 z = (u_projection*vec3(pos, 1.0)).xy;
+//     vec2 w = funofz(z);
+//     float hue = (cArg(w)+PI)/(2.0*PI);
+//     vec3 rgb = hslToRgb(vec3(hue, 0.5, 0.5 - 0.25*gridLum(w)));
+//     rgb *= 1.0 - lum(w);
+//     rgb += lum(w)*vec3(1.0);
+//     gl_FragColor = vec4(rgb, 1.0);
+// }
+
 void main() {
+    // gl_FragColor is a special variable a fragment shader
+    // is responsible for setting
+    //gl_FragColor = vec4(1.0, 0.0, 0.5, 1); // return redish-purple
+    //gl_FragColor = vec4(1.0, 0.0, 0.5, 1);
+
+    //vec2 z = (gl_FragCoord.xy/u_resolution-1.0/2.0)*10.0;
     vec2 z = (u_projection*vec3(pos, 1.0)).xy;
     vec2 w = funofz(z);
     float hue = (cArg(w)+PI)/(2.0*PI);
-    vec3 rgb = hslToRgb(vec3(hue, 0.5, 0.5 - 0.25*gridLum(w)));
-    rgb *= 1.0 - lum(w);
-    rgb += lum(w)*vec3(1.0);
-    gl_FragColor = vec4(rgb, 1.0);
+    //float hue = (cArg(cMul(z,z))+PI)/(2.0*PI);
+
+    //if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
+    //  hue = 0.0;
+
+    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w))), 1.0);
+    //gl_FragColor = randomColor(gl_FragCoord.xy);
 }

@@ -15,7 +15,10 @@ import { webglUtils } from '../webgl_utils';
 @Component({
   selector: 'app-plot',
   templateUrl: './plot.component.html',
-  styleUrls: ['./plot.component.css']
+  styleUrls: ['./plot.component.css'],
+  host: {
+    '(window:resize)': 'onResize($event)'
+  }
 })
 export class PlotComponent implements OnInit {
 
@@ -74,6 +77,8 @@ export class PlotComponent implements OnInit {
     this.vertex = [0.0, 0.0];
     this.width = 10.0;
 
+    webglUtils.setUpRendering(this.gl, this.quality);
+
     this.insertProgram();
 
     this.mensaje = 'Hola';
@@ -96,6 +101,18 @@ export class PlotComponent implements OnInit {
     for(var i=0; i<event.changedTouches.length; i++)
       this.touches.push(event.changedTouches[i]);
     this.touches.sort(function(a,b) {return a.identifier-b.identifier;});
+  }
+
+  onResize(event) {
+    webglUtils.setUpRendering(this.gl, this.quality);
+    this.flipScreen = Matrix3.scaling(2.0, -2.0);
+    this.flipScreen = Matrix3.multiply(this.flipScreen,
+                                       Matrix3.translation(-this.gl.canvas.clientWidth/2.0,
+                                                           -this.gl.canvas.clientHeight/2.0));
+    this.aspectRatio = this.gl.canvas.clientHeight/this.gl.canvas.clientWidth;
+    this.adjustScreen = Matrix3.scaling(1.0/this.gl.canvas.clientWidth,
+                                        this.aspectRatio/this.gl.canvas.clientHeight);
+    this.draw();
   }
 
   ontouchend(event) {
