@@ -35,9 +35,6 @@ export class PlotComponent implements OnInit {
 
   vertex : Array<number>;
 
-  currX : number;
-  currY : number;
-
   width : number;
   height : number;
 
@@ -81,8 +78,6 @@ export class PlotComponent implements OnInit {
 
     this.insertProgram();
 
-    this.mensaje = 'Hola';
-
     this.mouseState = Object.create(null);
     this.movingScreen = false;
     this.projection_matrix = new Matrix(Matrix3.identity(), Matrix3.identity());
@@ -91,13 +86,15 @@ export class PlotComponent implements OnInit {
                                        Matrix3.translation(-this.gl.canvas.clientWidth/2.0,
                                                            -this.gl.canvas.clientHeight/2.0));
     this.aspectRatio = this.gl.canvas.clientHeight/this.gl.canvas.clientWidth;
-    this.adjustScreen = Matrix3.scaling(1.0/this.gl.canvas.clientWidth, this.aspectRatio/this.gl.canvas.clientHeight);
+    this.adjustScreen = Matrix3.scaling(2.0/this.gl.canvas.clientWidth,
+                                        1.0/this.gl.canvas.clientHeight);
     this.touches = [];
+
+    this.mouseState = {x: undefined, y: undefined};
 
   }
 
   ontouchstart(event) {
-    this.mensaje = 'Touch start';
     for(var i=0; i<event.changedTouches.length; i++)
       this.touches.push(event.changedTouches[i]);
     this.touches.sort(function(a,b) {return a.identifier-b.identifier;});
@@ -111,7 +108,7 @@ export class PlotComponent implements OnInit {
                                                            -this.gl.canvas.clientHeight/2.0));
     this.aspectRatio = this.gl.canvas.clientHeight/this.gl.canvas.clientWidth;
     this.adjustScreen = Matrix3.scaling(1.0/this.gl.canvas.clientWidth,
-                                        this.aspectRatio/this.gl.canvas.clientHeight);
+                                        1.0/this.gl.canvas.clientHeight);
     this.draw();
   }
 
@@ -176,6 +173,44 @@ export class PlotComponent implements OnInit {
     this.draw();
   }
 
+  onmousedown(event) {
+    var pos = [event.x, event.y, 1.0];
+    pos = Matrix3.multiplyVector(this.flipScreen, pos);
+    this.mouseState.x = pos[0];
+    this.mouseState.y = pos[1];
+  }
+
+  onmouseup(event) {
+    this.mouseState.x = undefined;
+    this.mouseState.y = undefined;
+  }
+
+  onmousemove(event) {
+    if(this.mouseState.x || this.mouseState.y) {
+      var pos = [event.x, event.y, 1.0];
+      pos = Matrix3.multiplyVector(this.flipScreen, pos);
+      var txy = [pos[0] - this.mouseState.x, pos[1] - this.mouseState.y, 1.0];
+      txy = Matrix3.multiply(this.adjustScreen, txy);
+      this.projection_matrix.translate(-txy[0], -txy[1]);
+
+      this.mouseState.x = pos[0];
+      this.mouseState.y = pos[1];
+
+      this.draw();
+    }
+  }
+
+  onwheel(event) {
+    var pos = [event.x, event.y, 1.0];
+    pos = Matrix3.multiplyVector(this.flipScreen, pos);
+    pos = Matrix3.multiplyVector(this.adjustScreen, pos);
+    var factor = 1.0/(1.0 - Math.sign(event.deltaY)*0.15);
+    this.projection_matrix.scaleC(factor, factor, pos[0], pos[1]);
+    this.mensaje = ''+pos[0]+','+pos[1];
+
+    this.draw();
+  }
+
   async insertProgram() {
     let vertexRequest = this.http.get('./assets/vertex_shader.glsl',
                                      { responseType: 'text' });
@@ -201,6 +236,7 @@ export class PlotComponent implements OnInit {
   }
 
   loadProgram() {
+    webglUtils.cleanWebGL(this.gl, this.positionBuffer);
     this.positionLocation = this.gl.getAttribLocation(this.program, "position");
     this.projectionLocation = this.gl.getUniformLocation(this.program, "u_projection");
     this.aspectRatioLocation = this.gl.getUniformLocation(this.program, "u_aspect_ratio");
@@ -226,7 +262,7 @@ export class PlotComponent implements OnInit {
 
   draw() {
     this.gl.uniformMatrix3fv(this.projectionLocation, false, this.projection_matrix.mat);
-    this.mensaje = '' + this.gl.canvas.clientWidth/this.gl.canvas.clientHeight;
+    //this.mensaje = '' + this.gl.canvas.clientWidth/this.gl.canvas.clientHeight;
     this.gl.uniform2f(this.aspectRatioLocation, this.gl.canvas.clientWidth/this.gl.canvas.clientHeight,
                                                 1.0);
     this.gl.uniform1f(this.densityLocation, 20.0-this.density);

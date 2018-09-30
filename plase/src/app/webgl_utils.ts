@@ -59,4 +59,9 @@ export class webglUtils {
     gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
+  static cleanWebGL(gl, positionBuffer) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.deleteBuffer(positionBuffer);
+  }
+
 }

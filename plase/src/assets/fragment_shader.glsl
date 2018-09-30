@@ -166,7 +166,7 @@ void main() {
     //if((z.x > -2.0) && (z.x < -1.0) && (z.y > 1.0) && (z.y < 2.0))
     //  hue = 0.0;
 
-    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, 0.5-0.5*gridLum(w))), 1.0);
-    //gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w)-gridLum(w))), 1.0);
+    // gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, 0.5-0.5*gridLum(w))), 1.0);
+    gl_FragColor = vec4(hslToRgb(vec3(hue, 0.5, lum(w)-gridLum(w))), 1.0);
     //gl_FragColor = randomColor(gl_FragCoord.xy);
 }

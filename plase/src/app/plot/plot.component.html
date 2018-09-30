@@ -1,7 +1,14 @@
 <canvas #canvas id="canvas"
   (touchstart)="ontouchstart($event)"
   (touchmove)="ontouchmove($event)"
-  (touchend)="ontouchend($event)">
+  (touchend)="ontouchend($event)"
+  (wheel)="onwheel($event)"
+  (mousedown)="onmousedown($event)"
+  (mousemove)="onmousemove($event)"
+  (mouseup)="onmouseup($event)">
   fallback
 </canvas>
-<p id="importante" > {{mensaje}} </p>
+<div class="bar">
+  <p id="importante" > {{mensaje}} </p>
+  <input id="function" placeholder="z^2">
+</div>
